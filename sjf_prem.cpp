@@ -3,100 +3,85 @@ using namespace std;
 
 int main()
 {
-    ifstream inputFile("1.txt");
-    int n;
-    inputFile >> n;
 
-    vector<string> processNames(n);
-    vector<int> burstTimes(n), remainingBurst(n);
+    freopen("sjf_prem.txt", "r", stdin);
+    int n;
+    cin >> n;
+    vector<string> P(n), gantt;
+    vector<int> BT(n), rBT(n), CT(n), TAT(n), WT(n);
+
     for (int i = 0; i < n; i++)
     {
-        inputFile >> processNames[i] >> burstTimes[i];
-        remainingBurst[i] = burstTimes[i];
+        cin >> P[i] >> BT[i];
+        rBT[i] = BT[i];
     }
 
-    vector<int> completionTime(n, 0), turnaroundTime(n, 0), waitingTime(n, 0);
-    vector<bool> done(n, false);
+    // for (auto x : P)
+    //     cout << x << " ";
+    // cout << endl;
+    // for (auto x : BT)
+    //     cout << x << " ";
+    // cout << endl;
 
-    int completed = 0;
-    int currentTime = 0;
-    float totalTAT = 0, totalWT = 0;
-
-    vector<tuple<int, int, string>> ganttChart; // (startTime, endTime, processName)
-    string prevProcess = "";
-
+    int completed = 0, currentTime = 0;
     while (completed < n)
     {
-        int idx = -1;
-        int minRemaining = INT_MAX;
+        int index = -1;
+        int min_rBT = INT_MAX;
 
-        // Find process with minimum remaining burst time that is not done
+        // Find P with shortest remaining burst time which is not finished
         for (int i = 0; i < n; i++)
         {
-            if (!done[i] && remainingBurst[i] > 0)
+            if (rBT[i] > 0 && rBT[i] < min_rBT)
             {
-                if (remainingBurst[i] < minRemaining ||
-                    (remainingBurst[i] == minRemaining && i < idx))
-                {
-                    idx = i;
-                    minRemaining = remainingBurst[i];
-                }
+                min_rBT = rBT[i];
+                index = i;
             }
         }
 
-        if (idx == -1)
-        {
-            // No process left (should not happen if completed<n), but just in case
-            currentTime++;
-            continue;
-        }
+        // All done or no P to run (shouldn't happen without arrival time)
+        if (index == -1)
+            break;
 
-        // Gantt chart update
-        if (prevProcess != processNames[idx])
-            ganttChart.push_back({currentTime, currentTime + 1, processNames[idx]});
-        else
-            get<1>(ganttChart.back())++; // extend current process execution
-
-        remainingBurst[idx]--;
+        // Run P for 1 unit time
+        rBT[index]--;
         currentTime++;
-        prevProcess = processNames[idx];
+        gantt.push_back(P[index]);
 
-        if (remainingBurst[idx] == 0)
+        if (rBT[index] == 0)
         {
-            done[idx] = true;
             completed++;
-            completionTime[idx] = currentTime;
-            turnaroundTime[idx] = completionTime[idx]; // arrival time = 0
-            waitingTime[idx] = turnaroundTime[idx] - burstTimes[idx];
-            totalTAT += turnaroundTime[idx];
-            totalWT += waitingTime[idx];
+            CT[index] = currentTime;
         }
     }
 
-    // Print process info
-    cout << "Process\tBT\tCT\tTAT\tWT\n";
+    // Calculate TAT and WT
     for (int i = 0; i < n; i++)
     {
-        cout << processNames[i] << "\t" << burstTimes[i] << "\t"
-             << completionTime[i] << "\t" << turnaroundTime[i] << "\t" << waitingTime[i] << "\n";
+        TAT[i] = CT[i]; // Arrival time = 0, so TAT = CT - 0 = CT
+        WT[i] = TAT[i] - BT[i];
     }
 
-    // Print Gantt Chart
-    cout << "\n\nGantt Chart:\n ";
-    for (auto &[start, end, name] : ganttChart)
-        cout << "-------";
-    cout << "\n|";
-    for (auto &[start, end, name] : ganttChart)
-        cout << setw(5) << name << " |";
-    cout << "\n ";
-    for (auto &[start, end, name] : ganttChart)
-        cout << "-------";
-    cout << "\n0";
-    for (auto &[start, end, name] : ganttChart)
-        cout << setw(7) << end;
+    // Print Gantt chart
+    cout << "Gantt Chart (P execution order):\n";
+    for (auto &p : gantt)
+        cout << p << " -> ";
+    cout << "end\n\n";
 
-    cout << "\n\nAverage Turnaround Time: " << totalTAT / n << endl;
-    cout << "Average Waiting Time: " << totalWT / n << endl;
+    // keep only the single P
+    gantt.erase(unique(gantt.begin(), gantt.end()), gantt.end());
+    // Print table
+    cout << "P   Burst Time   Completion Time   Turn Around Time   Waiting Time\n";
+    for (int i = 0; i < n; i++)
+    {
+        cout << gantt[i] << "            " << BT[i] << "             " << CT[i] << "                 " << TAT[i] << "                 " << WT[i] << "\n";
+    }
+
+    float avgTAT = accumulate(TAT.begin(), TAT.end(), 0.0f) / n;
+    float avgWT = accumulate(WT.begin(), WT.end(), 0.0f) / n;
+
+    cout << "\nAverage Turn Around Time: " << avgTAT << endl;
+    cout << "Average Waiting Time: " << avgWT << endl;
 
     return 0;
 }
